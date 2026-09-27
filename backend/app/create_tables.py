@@ -1,0 +1,1 @@
+print("Use 'python -m alembic upgrade head' to create or update the database schema.")
