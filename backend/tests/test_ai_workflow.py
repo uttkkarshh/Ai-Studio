@@ -227,7 +227,9 @@ def test_orchestrator_actions_all_have_graph_routes():
         )
         route = graph_module.route_after_orchestrator({"action": action})
         assert route == (
-            "plan_work" if action_name in {"create_plan", "revise_plan"} else graph_module.END
+            "plan_work"
+            if action_name in {"create_plan", "revise_plan", "generate_script"}
+            else graph_module.END
         )
 
 
@@ -280,6 +282,120 @@ def test_ai_api_serializes_work_plan_proposal_without_creating_parts(client, mon
     }
     assert response.json()["requires_approval"] is True
     assert client.get(f"/api/projects/{project_id}/parts/").json() == []
+
+
+def test_part_scoped_generate_script_returns_reviewable_script_plan_without_persisting(
+    client,
+    monkeypatch,
+):
+    project_id = client.post(
+        "/api/projects/",
+        json={"name": "Script generation"},
+    ).json()["id"]
+    part_id = client.post(
+        f"/api/projects/{project_id}/parts/",
+        json={"title": "Opening", "objective": "Introduce the topic."},
+    ).json()["id"]
+    plan = WorkPlan(
+        objective="Generate an opening script for the selected Part.",
+        rationale="The user requested a script draft for this Part.",
+        tasks=[
+            WorkTask(
+                task_id="generate-opening-script",
+                title="Generate an opening script",
+                action="generate_draft",
+                capability="generate_script_draft",
+                target_type="script_draft",
+                intent="Write an opening script for the selected Part.",
+                expected_output="An unpersisted, reviewable script draft.",
+                completion_criteria=["The draft introduces the Part's topic."],
+            )
+        ],
+    )
+
+    class FakeOrchestrator:
+        def decide(self, **kwargs):
+            assert kwargs["scope"] == "part"
+            assert kwargs["part_id"] == part_id
+            return OrchestratorAction(
+                action="generate_script",
+                reason="The user requested a script for the selected Part.",
+                objective=plan.objective,
+            )
+
+    class FakePlannerModel:
+        def invoke(self, messages):
+            assert "exactly one task" in messages[0][1]
+            assert "generate_script_draft" in messages[0][1]
+            return plan
+
+    monkeypatch.setattr(graph_module, "Orchestrator", FakeOrchestrator)
+    monkeypatch.setattr(
+        graph_module,
+        "_load_context_for_state",
+        lambda state: {
+            "current_parts": [{"id": part_id, "title": "Opening"}],
+            "selected_part": {"id": part_id, "title": "Opening"},
+        },
+    )
+    monkeypatch.setattr(
+        graph_module,
+        "create_work_planner_model",
+        lambda: FakePlannerModel(),
+    )
+
+    response = client.post(
+        f"/api/projects/{project_id}/ai/message",
+        json={
+            "message": "Generate a script for this part.",
+            "scope": "part",
+            "part_id": part_id,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["action"]["action"] == "generate_script"
+    assert body["message"] == "I prepared a script-generation plan for your review."
+    assert body["requires_approval"] is True
+    assert body["proposal"] == {"type": "work_plan", "data": plan.model_dump()}
+    assert client.get(f"/api/parts/{part_id}/script-drafts").json() == []
+
+
+def test_unsupported_research_action_returns_clear_message(client, monkeypatch):
+    project_id = client.post(
+        "/api/projects/",
+        json={"name": "Unsupported research"},
+    ).json()["id"]
+
+    class FakeOrchestrator:
+        def decide(self, **kwargs):
+            return OrchestratorAction(
+                action="research",
+                reason="The user requested research.",
+                objective="Research the project.",
+            )
+
+    monkeypatch.setattr(graph_module, "Orchestrator", FakeOrchestrator)
+    monkeypatch.setattr(
+        graph_module,
+        "_load_context_for_state",
+        lambda state: {},
+    )
+
+    response = client.post(
+        f"/api/projects/{project_id}/ai/message",
+        json={"message": "Research the project.", "scope": "project"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["action"]["action"] == "research"
+    assert response.json()["message"] == (
+        "Research is not available in this workflow yet. No research was "
+        "performed; choose a work-planning request instead."
+    )
+    assert response.json()["proposal"] is None
+    assert response.json()["requires_approval"] is False
 
 
 def test_ai_api_returns_conversational_response_without_proposal(client, monkeypatch):

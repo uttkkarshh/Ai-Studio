@@ -169,7 +169,9 @@ def _get_completion_context(
         ),
         "script_draft": (
             "Return only ScriptDraftCreate fields: title, content, and "
-            "created_by_type. This draft is for the selected Part."
+            "created_by_type. content must be a JSON object or array, never "
+            "plain text; prefer {\"sections\": [{\"type\": \"narration\", "
+            "\"content\": \"...\"}]}. This draft is for the selected Part."
         ),
     }[task.target_type]
 

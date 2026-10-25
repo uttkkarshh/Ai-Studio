@@ -147,15 +147,12 @@ def orchestrator_node(state: AgentState):
 
     elif action.action == "research":
         result["message"] = (
-            "Research execution is not connected to this workflow yet. "
-            "No research has been performed."
+            "Research is not available in this workflow yet. No research "
+            "was performed; choose a work-planning request instead."
         )
 
     elif action.action == "generate_script":
-        result["message"] = (
-            "Script generation is not connected to this workflow yet. "
-            "No script has been generated."
-        )
+        result["message"] = "Preparing a script-generation plan for your review."
 
     elif action.action == "request_approval":
         result["message"] = (
@@ -243,7 +240,12 @@ def plan_work_node(state: AgentState):
             "I prepared a revised work plan for your review."
             if isinstance(action, OrchestratorAction)
             and action.action == "revise_plan"
-            else "I prepared a work plan for your review."
+            else (
+                "I prepared a script-generation plan for your review."
+                if isinstance(action, OrchestratorAction)
+                and action.action == "generate_script"
+                else "I prepared a work plan for your review."
+            )
         ),
         "requires_approval": True,
         "proposal": proposal,
@@ -266,8 +268,8 @@ def route_after_orchestrator(state: AgentState):
     routes = {
         "create_plan": "plan_work",
         "revise_plan": "plan_work",
+        "generate_script": "plan_work",
         "research": END,
-        "generate_script": END,
         "request_approval": END,
         "answer": END,
         "finish": END,

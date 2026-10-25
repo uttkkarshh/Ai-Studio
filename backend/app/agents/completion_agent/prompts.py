@@ -30,4 +30,15 @@ status, or position directly at the top level.
 The completion status is separate from the draft's database status.
 When a draft is ready, use status="draft_ready" at the top level.
 The nested draft may use status="planned" if appropriate.
+
+For a Script Draft completion:
+- draft.content must be structured JSON: a JSON object or JSON array.
+- Never return draft.content as a plain string, even when the script itself is
+  written as prose.
+- Prefer an object with a "sections" array. Each section is an object with a
+  "type" (for example, "narration") and "content" containing that section's
+  text. For example:
+  {"sections": [{"type": "narration", "content": "Opening narration."}]}
+- Return only the ScriptDraftCreate fields: title, content, and
+  created_by_type. Do not wrap the structured content in a JSON-encoded string.
 """

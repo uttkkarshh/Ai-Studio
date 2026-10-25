@@ -128,7 +128,9 @@ Rules:
 3. A proposal with type "work_plan" contains independent proposed tasks.
 4. Do not interpret a WorkPlan as a legacy ProjectPlan.
 5. Choose research only when the user requests evidence gathering.
-6. Choose generate_script only when script generation is requested.
+6. Choose generate_script only when script generation is requested. This action
+   prepares a reviewable WorkPlan containing a script_draft generation task;
+   it does not generate or persist the script immediately.
 7. Choose request_approval when an existing proposal needs explicit user approval.
 8. Choose answer for ordinary questions that can be answered without a workflow action.
 9. Choose finish when no additional action is needed.

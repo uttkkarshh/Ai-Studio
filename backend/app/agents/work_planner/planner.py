@@ -20,6 +20,16 @@ def _project_structure_guidance(context: str) -> str:
     if not isinstance(context_data, dict):
         return ""
 
+    if context_data.get("request_type") == "generate_script":
+        return (
+            "The user explicitly requested script generation. Propose exactly "
+            "one task with capability generate_script_draft, action "
+            "generate_draft, and target_type script_draft. Do not propose "
+            "other task types. If the scope is part, target the selected Part. "
+            "The generated draft must be presented for user review and must "
+            "not be persisted automatically."
+        )
+
     project_context = context_data.get("project_context", context_data)
     if not isinstance(project_context, dict):
         return ""

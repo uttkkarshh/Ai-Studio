@@ -198,6 +198,90 @@ def test_completion_agent_rejects_invalid_model_output():
         completion_agent.complete(task_input)
 
 
+def test_script_draft_completion_accepts_structured_json_content():
+    task = make_task(
+        "generate_script_draft",
+        action="generate_draft",
+        target_type="script_draft",
+    )
+    content = {
+        "sections": [
+            {"type": "narration", "content": "A concise opening."},
+        ],
+    }
+    completion_agent = CompletionAgent(
+        FakeModel(
+            {
+                "status": "draft_ready",
+                "draft": {
+                    "title": "Opening",
+                    "content": content,
+                    "created_by_type": "ai",
+                },
+            }
+        )
+    )
+    task_input = CompletionTaskInput(
+        project_id=1,
+        scope="part",
+        part_id=4,
+        user_request="Write an opening.",
+        task=task,
+        project_context=PlannerContext(
+            project_id=1,
+            project_name="Script project",
+            project_description=None,
+            project_objective="Introduce the topic.",
+            current_parts=[],
+            relevant_findings=[],
+        ),
+        target_instructions="Return structured script content.",
+    )
+
+    result = completion_agent.complete(task_input)
+
+    assert result.draft.content == content
+
+
+def test_script_draft_completion_rejects_plain_text_content():
+    task = make_task(
+        "generate_script_draft",
+        action="generate_draft",
+        target_type="script_draft",
+    )
+    completion_agent = CompletionAgent(
+        FakeModel(
+            {
+                "status": "draft_ready",
+                "draft": {
+                    "title": "Opening",
+                    "content": "A plain text script.",
+                    "created_by_type": "ai",
+                },
+            }
+        )
+    )
+    task_input = CompletionTaskInput(
+        project_id=1,
+        scope="part",
+        part_id=4,
+        user_request="Write an opening.",
+        task=task,
+        project_context=PlannerContext(
+            project_id=1,
+            project_name="Script project",
+            project_description=None,
+            project_objective="Introduce the topic.",
+            current_parts=[],
+            relevant_findings=[],
+        ),
+        target_instructions="Return structured script content.",
+    )
+
+    with pytest.raises(ValidationError, match="valid dictionary|valid list"):
+        completion_agent.complete(task_input)
+
+
 def test_missing_script_part_returns_clarification_without_model_call(db_session):
     project = Project(name="Script project")
     db_session.add(project)
