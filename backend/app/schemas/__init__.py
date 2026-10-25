@@ -7,7 +7,13 @@ from app.schemas.part import (
     PartUpdate,
 )
 from app.schemas.finding import FindingCreate, FindingResponse, FindingUpdate
-from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.schemas.project import (
+    ProjectAIMessageRequest,
+    ProjectAIResponse,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
+)
 from app.schemas.script import (
     ScriptAcceptanceResponse,
     ScriptDraftCreate,
@@ -26,6 +32,8 @@ __all__ = [
     "PartRevisionDetailResponse",
     "PartRevisionResponse",
     "PartUpdate",
+    "ProjectAIMessageRequest",
+    "ProjectAIResponse",
     "ProjectCreate",
     "ProjectResponse",
     "ProjectUpdate",

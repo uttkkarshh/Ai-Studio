@@ -14,9 +14,7 @@ class Settings:
 
 @lru_cache
 def get_settings() -> Settings:
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL must be set")
+    database_url = os.getenv("DATABASE_URL") or "sqlite:///./ai_studio.db"
     return Settings(database_url=database_url)
 
 

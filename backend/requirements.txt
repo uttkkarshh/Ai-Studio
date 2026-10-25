@@ -1,6 +1,10 @@
 alembic
 fastapi
+httpx
+langchain
+langchain-openai
 psycopg2-binary
+pytest
 python-dotenv
 sqlalchemy
 uvicorn

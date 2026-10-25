@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
+from app import main as main_module
 from app.db.database import Base
 from app.db.dependencies import get_db
 from app.main import app
@@ -64,6 +65,34 @@ def test_nonexistent_project_returns_404(client):
     assert client.get("/api/projects/999999").status_code == 404
     assert client.put("/api/projects/999999", json={"name": "Missing"}).status_code == 404
     assert client.delete("/api/projects/999999").status_code == 404
+
+
+def test_unhandled_request_failure_logs_traceback_and_returns_request_id(
+    client,
+    monkeypatch,
+    caplog,
+):
+    def fail_connect():
+        raise RuntimeError("database connection unavailable")
+
+    monkeypatch.setattr(main_module.engine, "connect", fail_connect)
+
+    with caplog.at_level("ERROR"):
+        response = client.get("/api/health/db")
+
+    request_id = response.headers["X-Request-ID"]
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "Internal server error",
+        "request_id": request_id,
+    }
+    assert "database connection unavailable" in caplog.text
+    assert any(
+        "Unhandled request failure" in record.getMessage()
+        and record.exc_info is not None
+        and record.request_id == request_id
+        for record in caplog.records
+    )
 
 
 def test_parts_crud_arbitrary_count_and_project_ownership(client):
